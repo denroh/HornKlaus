@@ -699,17 +699,27 @@ public class HornClaus {
 
     Expression parseArrayAssignment(IASTArraySubscriptExpression lhsEx, Expression second, Flow flow) {
         var lhs = flow.normalFlow.get();
-        TypedVar arrayVar = switch (lhsEx.getArrayExpression()) {
+        var writes = new ArrayList<IASTArraySubscriptExpression>();
+        IASTExpression arrayEx = lhsEx;
+        while (arrayEx instanceof IASTArraySubscriptExpression) {
+            var subscript = (IASTArraySubscriptExpression) arrayEx;
+            writes.add(subscript);
+            arrayEx = subscript.getArrayExpression();
+        }
+        TypedVar arrayVar = switch (arrayEx) {
             case IASTIdExpression arrId -> scope.getVar(arrId.getName().toString()).get();
             default -> throw new IllegalArgumentException("unsupported assignment to: " + lhsEx.getRawSignature());
         };
-        var array = Util.mkAtom(arrayVar);
-        var arg = switch (lhsEx.getArgument()) {
-            case IASTExpression i -> parseExpression(i, flow);
-            default -> throw new IllegalArgumentException("unsupported array subscript: " + lhsEx.getArgument().getRawSignature());
-        };
-        var store = Util.mkAtomList(array.type, Util.mkAtom("store", Type.Void), array, arg, second);
-        var rhs = mkFunApp("assign", lhsEx.getFileLocation(), Map.of(arrayVar, store));
+        var value = second;
+        for (var w: writes) {
+            var arr = parseExpression(w.getArrayExpression(), flow);
+            var arg = switch (w.getArgument()) {
+                case IASTExpression e -> parseExpression(e, flow);
+                default -> throw new IllegalArgumentException("unsupported array subscript: " + w.getArgument().getRawSignature());
+            };
+            value = Util.mkAtomList(arr.type, Util.mkAtom("store", Type.Void), arr, arg, value);
+        }
+        var rhs = mkFunApp("assign", lhsEx.getFileLocation(), Map.of(arrayVar, value));
         update(flow, lhs, rhs);
         return second;
     }
