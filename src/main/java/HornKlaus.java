@@ -645,7 +645,7 @@ class CHCs {
 
 }
 
-public class HornClaus {
+public class HornKlaus {
 
     private Scope scope = new Scope();
     private Map<String, IASTFunctionDefinition> functions = new LinkedHashMap<>();
@@ -656,7 +656,7 @@ public class HornClaus {
     public static String filename;
     public static boolean invert = false;
 
-    HornClaus(FunctionSymbol startFlow) {
+    HornKlaus(FunctionSymbol startFlow) {
         chcs = new CHCs(mkFunApp(startFlow));
     }
 
@@ -1362,14 +1362,14 @@ public class HornClaus {
     FunctionSymbol mkFunctionSymbol(String name, IASTFileLocation loc) {
         StringBuilder sb = new StringBuilder();
         sb.append(name);
-        sb.append(HornClaus.delimiter);
+        sb.append(HornKlaus.delimiter);
         sb.append(loc.getStartingLineNumber());
-        sb.append(HornClaus.delimiter);
+        sb.append(HornKlaus.delimiter);
         sb.append(loc.getNodeOffset());
         for (var c: scope.getContext().reversed()) {
-            sb.append(HornClaus.delimiter);
+            sb.append(HornKlaus.delimiter);
             sb.append(c.getStartingLineNumber());
-            sb.append(HornClaus.delimiter);
+            sb.append(HornKlaus.delimiter);
             sb.append(c.getNodeOffset());
         }
         return new FunctionSymbol(sb.toString(), scope.signature());
@@ -1378,14 +1378,14 @@ public class HornClaus {
     static void parseCommandlineOptions(String[] args) {
         for (int i = 0; i < args.length - 1; ++i) {
             switch (args[i]) {
-                case "--ari" -> HornClaus.ari = true;
-                case "--smt2" -> HornClaus.ari = false;
-                case String s when s.startsWith("--delimiter=") -> HornClaus.delimiter = s.substring("--delimiter=".length());
-                case "--invert" -> HornClaus.invert = true;
+                case "--ari" -> HornKlaus.ari = true;
+                case "--smt2" -> HornKlaus.ari = false;
+                case String s when s.startsWith("--delimiter=") -> HornKlaus.delimiter = s.substring("--delimiter=".length());
+                case "--invert" -> HornKlaus.invert = true;
                 default -> throw new IllegalArgumentException("unknown command line flag " + args[i]);
             }
         }
-        HornClaus.filename = args[args.length - 1];
+        HornKlaus.filename = args[args.length - 1];
     }
 
     public static void main(String[] args) throws Exception {
@@ -1418,7 +1418,7 @@ public class HornClaus {
             System.err.println("includes are not supported");
         }
         var startFlow = new FunctionSymbol("start", List.of());
-        HornClaus parser = new HornClaus(startFlow);
+        HornKlaus parser = new HornKlaus(startFlow);
         var flow = new Flow(parser.mkFunApp(startFlow));
         for (var declaration : translationUnit.getDeclarations()) {
             switch (declaration) {
