@@ -1423,8 +1423,7 @@ public class HornKlaus {
         for (var declaration : translationUnit.getDeclarations()) {
             switch (declaration) {
                 case IASTSimpleDeclaration simpleDeclaration -> {
-                    // TODO What's the proper way to distinguish typedefs and other declarations?
-                    if (simpleDeclaration.getRawSignature().startsWith("typedef")) {
+                    if (simpleDeclaration.getDeclSpecifier().getStorageClass() == IASTSimpleDeclSpecifier.sc_typedef) {
                         parser.parseTypedef(simpleDeclaration);
                     } else {
                         parser.parseDeclaration(simpleDeclaration, flow);
