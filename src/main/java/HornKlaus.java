@@ -482,6 +482,7 @@ class Expression {
     }
 
     static Expression True = Util.mkAtom("true", Type.Bool);
+    static Expression False = Util.mkAtom("false", Type.Bool);
 
     Set<TypedVar> vars;
     Set<TypedVar> nondet;
