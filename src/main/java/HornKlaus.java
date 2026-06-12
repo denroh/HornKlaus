@@ -739,27 +739,54 @@ public class HornKlaus {
     Expression mkBinaryOp(String op, Expression first, Expression second, Type type) {
         return Util.mkAtomList(type, Util.mkAtom(op, Type.Void), first, second);
     }
+    
+    Expression parseBinaryShortcutOp(IASTBinaryExpression binaryExpression, boolean isAnd, Flow flow) {
+        Expression first = parseExpression(binaryExpression.getOperand1(), flow).toBool();
+        FunApp startFlow = flow.normalFlow.get();
+        FunApp thenFlow = mkFunApp("shortcutOp_then", binaryExpression.getFileLocation());
+        FunApp exitFlow = mkFunApp("shortcutOp_exit", binaryExpression.getFileLocation());
+        update(flow, startFlow, isAnd ? first : negate(first), thenFlow);
+        Expression second = parseExpression(binaryExpression.getOperand2(), flow).toBool();
+        if (flow.normalFlow.isPresent()) {
+            var postThenFlow = flow.normalFlow.get();
+            update(flow, postThenFlow, exitFlow);
+        }
+        setFlow(flow, startFlow);
+        update(flow, startFlow, isAnd ? negate(first) : first, exitFlow);
+        if (isAnd) {
+            return Util.mkAtomList(Type.Bool, Util.mkAtom("ite", Type.Void), first , second, Expression.False);
+        } else {
+            return Util.mkAtomList(Type.Bool, Util.mkAtom("ite", Type.Void), first, Expression.True, second);
+        }
+    }
 
     Expression parseBinaryExpression(IASTBinaryExpression binaryExpression, Flow flow) {
+        int op = binaryExpression.getOperator();
+        if (op == IASTBinaryExpression.op_logicalAnd) {
+            return parseBinaryShortcutOp(binaryExpression, true, flow);
+        } else if (op == IASTBinaryExpression.op_logicalOr) {
+            return parseBinaryShortcutOp(binaryExpression, false, flow);
+        }
         var first = parseExpression(binaryExpression.getOperand1(), flow);
         var second = parseExpression(binaryExpression.getOperand2(), flow);
-        switch (binaryExpression.getOperator()) {
-            case IASTBinaryExpression.op_assign -> {
-                return parseAssignment(binaryExpression, second, flow);
+        switch (op) {
+            case IASTBinaryExpression.op_multiply -> {
+                return mkBinaryOp("*", first, second, Type.Int);
             }
-            case IASTBinaryExpression.op_logicalAnd -> {
-                // TODO shortcut semantics
-                return mkBinaryOp("and", first.toBool(), second.toBool(), Type.Bool);
+            case IASTBinaryExpression.op_divide -> {
+                return mkBinaryOp("div", first, second, Type.Int);
             }
-            case IASTBinaryExpression.op_logicalOr -> {
-                // TODO shortcut semantics
-                return mkBinaryOp("or", first.toBool(), second.toBool(), Type.Bool);
+            case IASTBinaryExpression.op_modulo -> {
+                return mkBinaryOp("mod", first, second, Type.Int);
             }
-            case IASTBinaryExpression.op_equals -> {
-                return mkBinaryOp("=", first, second, Type.Bool);
+            case IASTBinaryExpression.op_plus -> {
+                return mkBinaryOp("+", first, second, Type.Int);
             }
-            case IASTBinaryExpression.op_greaterEqual -> {
-                return mkBinaryOp(">=", first, second, Type.Bool);
+            case IASTBinaryExpression.op_minus -> {
+                return mkBinaryOp("-", first, second, Type.Int);
+            }
+            case IASTBinaryExpression.op_lessThan -> {
+                return mkBinaryOp("<", first, second, Type.Bool);
             }
             case IASTBinaryExpression.op_greaterThan -> {
                 return mkBinaryOp(">", first, second, Type.Bool);
@@ -767,38 +794,37 @@ public class HornKlaus {
             case IASTBinaryExpression.op_lessEqual -> {
                 return mkBinaryOp("<=", first, second, Type.Bool);
             }
-            case IASTBinaryExpression.op_lessThan -> {
-                return mkBinaryOp("<", first, second, Type.Bool);
+            case IASTBinaryExpression.op_greaterEqual -> {
+                return mkBinaryOp(">=", first, second, Type.Bool);
             }
-            case IASTBinaryExpression.op_minus -> {
-                return mkBinaryOp("-", first, second, Type.Int);
-            }
-            case IASTBinaryExpression.op_minusAssign -> {
-                second = mkBinaryOp("-", first, second, Type.Int);
+            case IASTBinaryExpression.op_assign -> {
                 return parseAssignment(binaryExpression, second, flow);
-            }
-            case IASTBinaryExpression.op_multiply -> {
-                return mkBinaryOp("*", first, second, Type.Int);
             }
             case IASTBinaryExpression.op_multiplyAssign -> {
                 second = mkBinaryOp("*", first, second, Type.Int);
                 return parseAssignment(binaryExpression, second, flow);
             }
-            case IASTBinaryExpression.op_notequals -> {
-                return mkBinaryOp("distinct", first, second, Type.Bool);
+            case IASTBinaryExpression.op_divideAssign -> {
+                second = mkBinaryOp("div", first, second, Type.Int);
+                return parseAssignment(binaryExpression, second, flow);
             }
-            case IASTBinaryExpression.op_plus -> {
-                return mkBinaryOp("+", first, second, Type.Int);
+            case IASTBinaryExpression.op_moduloAssign -> {
+                second = mkBinaryOp("mod", first, second, Type.Int);
+                return parseAssignment(binaryExpression, second, flow);
             }
             case IASTBinaryExpression.op_plusAssign -> {
                 second = mkBinaryOp("+", first, second, Type.Int);
                 return parseAssignment(binaryExpression, second, flow);
             }
-            case IASTBinaryExpression.op_modulo -> {
-                return mkBinaryOp("mod", first, second, Type.Int);
+            case IASTBinaryExpression.op_minusAssign -> {
+                second = mkBinaryOp("-", first, second, Type.Int);
+                return parseAssignment(binaryExpression, second, flow);
             }
-            case IASTBinaryExpression.op_divide -> {
-                return mkBinaryOp("div", first, second, Type.Int);
+            case IASTBinaryExpression.op_equals -> {
+                return mkBinaryOp("=", first, second, Type.Bool);
+            }
+            case IASTBinaryExpression.op_notequals -> {
+                return mkBinaryOp("distinct", first, second, Type.Bool);
             }
             default -> throw new IllegalArgumentException("unsupported binary expression: " + binaryExpression.getRawSignature());
         }
@@ -807,7 +833,7 @@ public class HornKlaus {
     Expression parseConditional(IASTConditionalExpression conditional, Flow flow) {
         FunApp lhs = flow.normalFlow.get();
         var cond = parseExpression(conditional.getLogicalConditionExpression(), flow).toBool();
-        var exitFlow = mkFunApp(mkFunctionSymbol("cond_exit", conditional.getFileLocation()));
+        var exitFlow = mkFunApp("cond_exit", conditional.getFileLocation());
         var then = mkFunApp("cond_then", conditional.getFileLocation());
         var elseApp = mkFunApp("cond_else", conditional.getFileLocation());
         update(flow, lhs, cond, then);
