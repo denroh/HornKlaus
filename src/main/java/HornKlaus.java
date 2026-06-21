@@ -1073,6 +1073,12 @@ public class HornKlaus {
                     case IASTUnaryExpression.op_bracketedPrimary -> {
                         return parseExpression(unaryExpression.getOperand(), flow);
                     }
+                    case IASTUnaryExpression.op_amper -> {
+                        return reference(arg);
+                    }
+                    case IASTUnaryExpression.op_star -> {
+                        return dereference(arg);
+                    }
                     default -> throw new IllegalArgumentException("unsupported unary expression: " + unaryExpression.getRawSignature());
                 }
             }
@@ -1083,6 +1089,16 @@ public class HornKlaus {
     Expression negate(Expression ex) {
         return Util.mkAtomList(Type.Bool, Util.mkAtom("not", Type.Void), ex.toBool());
     }
+    
+    Expression reference(Expression ex) {
+        // TODO: implement reference operator
+        throw new IllegalArgumentException("unsupported unary expression: &");
+    }
+    
+    Expression dereference(Expression ex) {
+        // TODO: implement dereference operator
+        throw new IllegalArgumentException("unsupported unary expression: *");
+    }
 
     void parseDeclarators(IASTDeclarator[] declarators, BaseType type, Flow flow) {
         for (var d: declarators) {
@@ -1092,6 +1108,7 @@ public class HornKlaus {
 
     Optional<TypedVar> parseDeclarator(IASTDeclarator declarator, BaseType type, Flow flow) {
         if (declarator.getPointerOperators().length > 0) {
+            // TODO: implement pointer variables
             throw new IllegalArgumentException("unsupported pointer declarator: " + declarator);
         }
         var lhs = flow.normalFlow.get();
