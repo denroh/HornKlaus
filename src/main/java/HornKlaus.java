@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.math.BigInteger;
 
 import org.eclipse.cdt.core.dom.ast.*;
 import org.eclipse.cdt.core.dom.ast.gnu.c.*;
@@ -975,6 +976,22 @@ public class HornKlaus {
         return new Pair<>(arg, updated);
     }
 
+    BigInteger parseIntegerLiteral(IASTLiteralExpression literalExpression) {
+        String s = new String(literalExpression.getValue()).toLowerCase();
+        s = s.replace("u", "");
+        s = s.replace("l", "");
+        int base = 10;
+        if (s.length() > 1 && s.charAt(0) == '0') {
+            base = switch (s.charAt(1)) {
+                case 'b' -> 2;
+                case 'x' -> 16;
+                default -> 8;
+            };
+            s = s.substring((base == 8) ? 1 : 2);
+        }
+        return new BigInteger(s, base);
+    }
+
     Expression parseLiteral(IASTLiteralExpression literalExpression) {
         switch (literalExpression.getKind()) {
             case IASTLiteralExpression.lk_false -> {
@@ -984,7 +1001,7 @@ public class HornKlaus {
                 return Util.mkAtom("true", Type.Bool);
             }
             case IASTLiteralExpression.lk_integer_constant -> {
-                return Util.mkAtom(new String(literalExpression.getValue()), Type.Int);
+                return Util.mkAtom(parseIntegerLiteral(literalExpression).toString(), Type.Int);
             }
             default -> throw new IllegalArgumentException("unsupported literal " + literalExpression.getRawSignature());
         }
