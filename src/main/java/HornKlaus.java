@@ -947,7 +947,7 @@ public class HornKlaus {
                 flow.setFlow(target);
                 return returnType == BaseType.Void ? Expression.True : target.args.getLast();
             }
-            default -> throw new IllegalArgumentException("unsupoprted function call: " + functionCallExpression.getRawSignature());
+            default -> throw new IllegalArgumentException("unsupported function call: " + functionCallExpression.getRawSignature());
         }
     }
 
@@ -1137,7 +1137,7 @@ public class HornKlaus {
         var x = scope.addVar(name, new Type(type, dim), initializer);
         Map<TypedVar, Expression> init = initializer.map(y -> Map.of(x, y)).orElse(Map.of());
         var rhs = mkFunApp("init", declarator.getFileLocation(), init);
-        update(flow, lhs, rhs);
+        update(flow, flow.normalFlow.get(), rhs);
         return Optional.of(x);
     }
 
