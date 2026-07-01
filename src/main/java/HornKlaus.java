@@ -1111,7 +1111,6 @@ public class HornKlaus {
             // TODO: implement pointer variables
             throw new IllegalArgumentException("unsupported pointer declarator: " + declarator);
         }
-        var lhs = flow.normalFlow.get();
         String name = declarator.getName().toString();
         int dim;
         switch (declarator) {
