@@ -833,8 +833,8 @@ public class HornKlaus {
     }
 
     Expression parseConditional(IASTConditionalExpression conditional, Flow flow) {
-        FunApp lhs = flow.normalFlow.get();
         var cond = parseExpression(conditional.getLogicalConditionExpression(), flow).toBool();
+        FunApp lhs = flow.normalFlow.get();
         var exitFlow = mkFunApp("cond_exit", conditional.getFileLocation());
         var then = mkFunApp("cond_then", conditional.getFileLocation());
         var elseApp = mkFunApp("cond_else", conditional.getFileLocation());
@@ -844,7 +844,7 @@ public class HornKlaus {
             var postThenFlow = flow.normalFlow.get();
             update(flow, postThenFlow, exitFlow);
         }
-        setFlow(flow, lhs);
+        flow.setFlow(lhs);
         update(flow, lhs, negate(cond), elseApp);
         var neg = parseExpression(conditional.getNegativeResultExpression(), flow);
         if (flow.normalFlow.isPresent()) {
