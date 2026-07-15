@@ -743,23 +743,26 @@ public class HornKlaus {
     }
     
     Expression parseBinaryShortcutOp(IASTBinaryExpression binaryExpression, boolean isAnd, Flow flow) {
-        Expression first = parseExpression(binaryExpression.getOperand1(), flow).toBool();
-        FunApp startFlow = flow.normalFlow.get();
-        FunApp thenFlow = mkFunApp("shortcutOp_then", binaryExpression.getFileLocation());
-        FunApp exitFlow = mkFunApp("shortcutOp_exit", binaryExpression.getFileLocation());
-        update(flow, startFlow, isAnd ? first : negate(first), thenFlow);
-        Expression second = parseExpression(binaryExpression.getOperand2(), flow).toBool();
+        var first = parseExpression(binaryExpression.getOperand1(), flow).toBool();
+        FunApp preFlow = flow.normalFlow.get();
+        FunApp thenFlow = mkFunApp("scOp_then", binaryExpression.getFileLocation());
+        update(flow, preFlow, isAnd ? first : negate(first), thenFlow);
+        var second = parseExpression(binaryExpression.getOperand2(), flow).toBool();
+        scope.push();
+        var res = scope.addVar("res", Type.Bool, Optional.empty());
+        var exit = mkFunctionSymbol("scOp_exit", binaryExpression.getFileLocation());
         if (flow.normalFlow.isPresent()) {
-            var postThenFlow = flow.normalFlow.get();
-            update(flow, postThenFlow, exitFlow);
+            FunApp thenExitFlow = mkFunApp(exit, Map.of(res, second));
+            update(flow, flow.normalFlow.get(), thenExitFlow);
         }
-        setFlow(flow, startFlow);
-        update(flow, startFlow, isAnd ? negate(first) : first, exitFlow);
-        if (isAnd) {
-            return Util.mkAtomList(Type.Bool, Util.mkAtom("ite", Type.Void), first , second, Expression.False);
-        } else {
-            return Util.mkAtomList(Type.Bool, Util.mkAtom("ite", Type.Void), first, Expression.True, second);
-        }
+        scope.pop();
+        flow.setFlow(preFlow);
+        scope.push();
+        res = scope.addVar("res", Type.Bool, Optional.empty());
+        var elseExitFlow = mkFunApp(exit, Map.of(res, isAnd ? Expression.False : Expression.True));
+        update(flow, flow.normalFlow.get(), isAnd ? negate(first) : first, elseExitFlow);
+        scope.pop();
+        return Util.mkAtom(res);
     }
 
     Expression parseBinaryExpression(IASTBinaryExpression binaryExpression, Flow flow) {
@@ -954,8 +957,7 @@ public class HornKlaus {
         }
     }
 
-    Pair<Expression, Expression> parsePrePostFixOp(IASTUnaryExpression expression, Flow flow, String op) {
-        var arg = parseExpression(expression.getOperand(), flow);
+    Pair<Expression, Expression> parsePrePostFixOp(IASTUnaryExpression expression, Flow flow, String op, Expression arg) {
         var updated = Util.mkAtomList(Type.Int, Util.mkAtom(op, Type.Void), arg, Util.mkAtom("1", Type.Int));
         TypedVar x;
         switch (expression.getOperand()) {
@@ -1062,19 +1064,19 @@ public class HornKlaus {
                         return arg;
                     }
                     case IASTUnaryExpression.op_postFixDecr -> {
-                        return parsePrePostFixOp(unaryExpression, flow, "-").getFirst();
+                        return parsePrePostFixOp(unaryExpression, flow, "-", arg).getFirst();
                     }
                     case IASTUnaryExpression.op_postFixIncr -> {
-                        return parsePrePostFixOp(unaryExpression, flow, "+").getFirst();
+                        return parsePrePostFixOp(unaryExpression, flow, "+", arg).getFirst();
                     }
                     case IASTUnaryExpression.op_prefixDecr -> {
-                        return parsePrePostFixOp(unaryExpression, flow, "-").getSecond();
+                        return parsePrePostFixOp(unaryExpression, flow, "-", arg).getSecond();
                     }
                     case IASTUnaryExpression.op_prefixIncr -> {
-                        return parsePrePostFixOp(unaryExpression, flow, "+").getSecond();
+                        return parsePrePostFixOp(unaryExpression, flow, "+", arg).getSecond();
                     }
                     case IASTUnaryExpression.op_bracketedPrimary -> {
-                        return parseExpression(unaryExpression.getOperand(), flow);
+                        return arg;
                     }
                     case IASTUnaryExpression.op_amper -> {
                         return reference(arg);
