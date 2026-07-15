@@ -835,24 +835,29 @@ public class HornKlaus {
     Expression parseConditional(IASTConditionalExpression conditional, Flow flow) {
         var cond = parseExpression(conditional.getLogicalConditionExpression(), flow).toBool();
         FunApp lhs = flow.normalFlow.get();
-        var exitFlow = mkFunApp("cond_exit", conditional.getFileLocation());
-        var then = mkFunApp("cond_then", conditional.getFileLocation());
-        var elseApp = mkFunApp("cond_else", conditional.getFileLocation());
-        update(flow, lhs, cond, then);
+        var thenFlow = mkFunApp("cond_then", conditional.getFileLocation());
+        var elseFlow = mkFunApp("cond_else", conditional.getFileLocation());
+        update(flow, flow.normalFlow.get(), cond, thenFlow);
         var pos = parseExpression(conditional.getPositiveResultExpression(), flow);
+        scope.push();
+        var res = scope.addVar("res", pos.type, Optional.empty());
+        var exit = mkFunctionSymbol("cond_exit", conditional.getFileLocation());
         if (flow.normalFlow.isPresent()) {
-            var postThenFlow = flow.normalFlow.get();
-            update(flow, postThenFlow, exitFlow);
+            var thenExitFlow = mkFunApp(exit, Map.of(res, pos));
+            update(flow, flow.normalFlow.get(), thenExitFlow);
         }
+        scope.pop();
         flow.setFlow(lhs);
-        update(flow, lhs, negate(cond), elseApp);
+        update(flow, flow.normalFlow.get(), negate(cond), elseFlow);
         var neg = parseExpression(conditional.getNegativeResultExpression(), flow);
+        scope.push();
+        res = scope.addVar("res", pos.type, Optional.empty());
         if (flow.normalFlow.isPresent()) {
-            var postElseFlow = flow.normalFlow.get();
-            update(flow, postElseFlow, exitFlow);
+            var elseExitFlow = mkFunApp(exit, Map.of(res, neg));
+            update(flow, flow.normalFlow.get(), elseExitFlow);
         }
-        setFlow(flow, exitFlow);
-        return Util.mkAtomList(pos.type, Util.mkAtom("ite", Type.Void), cond, pos, neg);
+        scope.pop();
+        return Util.mkAtom(res);
     }
 
     Expression parseFunctionCall(IASTFunctionCallExpression functionCallExpression, Flow flow) {
