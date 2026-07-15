@@ -872,8 +872,8 @@ public class HornKlaus {
                         case IASTExpression ex -> {
                             var arg = parseExpression(ex, flow).toBool();
                             chcs.addQuery(pre, invert ? arg : negate(arg));
-                            var postFlow = mkFunctionSymbol("postAssert", functionCallExpression.getFileLocation());
-                            update(flow, pre, arg, mkFunApp(postFlow));
+                            var postFlow = mkFunApp("postAssert", functionCallExpression.getFileLocation());
+                            update(flow, pre, arg, postFlow);
                             return Expression.True;
                         }
                         default -> throw new IllegalArgumentException("unsupported argument: " + argEx.getRawSignature());
@@ -899,13 +899,11 @@ public class HornKlaus {
                 if (returnType != BaseType.Void) {
                     scope.push();
                     scope.addVar("ret", new Type(returnType, 0), Optional.empty());
-                    var postFlow = mkFunctionSymbol("return", functionCallExpression.getFileLocation());
-                    var post = mkFunApp(postFlow);
+                    var post = mkFunApp("return", functionCallExpression.getFileLocation());
                     scope.pop();
                     flow.execCall(post);
                 } else {
-                    var postFlow = mkFunctionSymbol("return", functionCallExpression.getFileLocation());
-                    var post = mkFunApp(postFlow);
+                    var post = mkFunApp("return", functionCallExpression.getFileLocation());
                     flow.execCall(post);
                 }
                 ArrayList<Expression> actualArgs = new ArrayList<>();
@@ -1240,15 +1238,13 @@ public class HornKlaus {
             continues.add(flow.normalFlow.get());
         }
         scope.pop();
-        var beforeCheckFlow = mkFunctionSymbol("do_check", doStatement.getFileLocation());
-        var beforeCheck = mkFunApp(beforeCheckFlow);
+        var beforeCheck = mkFunApp("do_check", doStatement.getFileLocation());
         addClauses(continues, beforeCheck);
         setFlow(flow, beforeCheck);
         var cond = parseExpression(doStatement.getCondition(), flow).toBool();
         var afterCheck = flow.normalFlow.get();
         chcs.addClause(afterCheck, cond, pre);
-        var exitFlow = mkFunctionSymbol("do_exit", doStatement.getFileLocation());
-        var exit = mkFunApp(exitFlow);
+        var exit = mkFunApp("do_exit", doStatement.getFileLocation());
         addClauses(breaks, exit);
         update(flow, afterCheck, negate(cond), exit);
         flow.exitLoop();
@@ -1259,8 +1255,7 @@ public class HornKlaus {
         var pre = flow.normalFlow.get();
         var cond = parseExpression(whileStatement.getCondition(), flow).toBool();
         var afterCheck = flow.normalFlow.get();
-        var enterFlow = mkFunctionSymbol("while_enter", whileStatement.getFileLocation());
-        var enter = mkFunApp(enterFlow);
+        var enter = mkFunApp("while_enter", whileStatement.getFileLocation());
         update(flow, afterCheck, cond, enter);
         scope.push();
         parseStatement(whileStatement.getBody(), flow);
@@ -1271,8 +1266,7 @@ public class HornKlaus {
         }
         scope.pop();
         addClauses(continues, pre);
-        var exitFlow = mkFunctionSymbol("while_exit", whileStatement.getFileLocation());
-        var exit = mkFunApp(exitFlow);
+        var exit = mkFunApp("while_exit", whileStatement.getFileLocation());
         addClauses(breaks, exit);
         update(flow, afterCheck, negate(cond), exit);
         flow.exitLoop();
@@ -1285,8 +1279,7 @@ public class HornKlaus {
         var pre = flow.normalFlow.get();
         var cond = parseExpression(forStatement.getConditionExpression(), flow).toBool();
         var afterCheck = flow.normalFlow.get();
-        var enterFlow = mkFunctionSymbol("for_enter", forStatement.getFileLocation());
-        var enter = mkFunApp(enterFlow);
+        var enter = mkFunApp("for_enter", forStatement.getFileLocation());
         update(flow, afterCheck, cond, enter);
         scope.push();
         parseStatement(forStatement.getBody(), flow);
@@ -1296,8 +1289,7 @@ public class HornKlaus {
             continues.add(flow.normalFlow.get());
         }
         scope.pop();
-        var iterFlow = mkFunctionSymbol("for_iter", forStatement.getFileLocation());
-        var iter = mkFunApp(iterFlow);
+        var iter = mkFunApp("for_iter", forStatement.getFileLocation());
         addClauses(continues, iter);
         setFlow(flow, iter);
         parseExpression(forStatement.getIterationExpression(), flow);
