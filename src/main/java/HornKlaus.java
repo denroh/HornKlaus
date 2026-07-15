@@ -1319,37 +1319,34 @@ public class HornKlaus {
     }
 
     void parseIf(IASTIfStatement ifStatement, Flow flow) {
-        var pre = flow.normalFlow.get();
-        var exitFlow = mkFunctionSymbol("if_exit", ifStatement.getFileLocation());
-        var exit = mkFunApp(exitFlow);
         var cond = parseExpression(ifStatement.getConditionExpression(), flow).toBool();
-        var thenFlow = mkFunctionSymbol("if_then", ifStatement.getFileLocation());
-        var then = mkFunApp(thenFlow);
-        update(flow, pre, cond, then);
+        var preFlow = flow.normalFlow.get();
+        var thenFlow = mkFunApp(mkFunctionSymbol("if_then", ifStatement.getFileLocation()));
+        var exitFlow = mkFunApp(mkFunctionSymbol("if_exit", ifStatement.getFileLocation()));
+        update(flow, preFlow, cond, thenFlow);
         scope.push();
         parseStatement(ifStatement.getThenClause(), flow);
         if (flow.normalFlow.isPresent()) {
             pop(ifStatement.getThenClause().getFileLocation(), flow);
             var afterThen = flow.normalFlow.get();
-            chcs.addClause(afterThen, Expression.True, exit);
+            chcs.addClause(afterThen, Expression.True, exitFlow);
         } else {
             scope.pop();
         }
         if (ifStatement.getElseClause() != null) {
-            var elseFlow = mkFunctionSymbol("if_else", ifStatement.getFileLocation());
-            var elseApp = mkFunApp(elseFlow);
-            update(flow, pre, negate(cond), elseApp);
+            var elseFlow = mkFunApp(mkFunctionSymbol("if_else", ifStatement.getFileLocation()));
+            update(flow, preFlow, negate(cond), elseFlow);
             scope.push();
             parseStatement(ifStatement.getElseClause(), flow);
             if (flow.normalFlow.isPresent()) {
                 pop(ifStatement.getElseClause().getFileLocation(), flow);
                 var afterElse = flow.normalFlow.get();
-                update(flow, afterElse, exit);
+                update(flow, afterElse, exitFlow);
             } else {
                 scope.pop();
             }
         } else {
-            update(flow, pre, negate(cond), exit);
+            update(flow, preFlow, negate(cond), exitFlow);
         }
     }
 
